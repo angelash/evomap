@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { EvoMapError } from '../src/errors/index.js';
+import { EvoMapError } from '../../src/errors/index.js';
 
 /**
  * 集成测试 - 测试完整链路
