@@ -1,6 +1,6 @@
 import { PublishPayload, PublishResponse } from '../protocol/messages.js';
 import { query, queryOne, transaction } from '../database/pool.js';
-import { EvoMapError, createSchemaError, createPolicyError } from '../errors/index.js';
+import { EvoMapError, createSchemaError, createPolicyError, createAuthError } from '../errors/index.js';
 import crypto from 'crypto';
 
 /**
@@ -21,9 +21,9 @@ export async function handlePublish(
   }
 
   if (
-!payload.bundle_format === 'zip' &&
-!payload.bundle_format === 'tar.gz'
-) {
+    payload.bundle_format !== 'zip' &&
+    payload.bundle_format !== 'tar.gz'
+  ) {
     throw createSchemaError(
       'E_SCHEMA_INVALID_TYPE',
       'Invalid bundle format, must be zip or tar.gz',

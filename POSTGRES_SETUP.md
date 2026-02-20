@@ -120,7 +120,7 @@ docker stop evomap-postgres
 docker start evomap-postgres
 
 # 删除容器（数据卷会保留）
-docker rm evolumap-postgres
+docker rm evomap-postgres
 
 # 删除数据卷（⚠️ 会删除所有数据）
 docker volume rm evomap-data

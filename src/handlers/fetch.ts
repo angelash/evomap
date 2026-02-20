@@ -29,33 +29,33 @@ export async function handleFetch(
   const params: unknown[] = [];
   let paramIndex = 1;
 
-  // Project filter
+  // Project filter (from metadata)
   if (payload.project) {
-    conditions.push(`project = $${paramIndex++}`);
+    conditions.push(`metadata->>'project' = $${paramIndex++}`);
     params.push(payload.project);
   }
 
-  // Namespace filter
+  // Namespace filter (from metadata)
   if (payload.namespace) {
-    conditions.push(`namespace = $${paramIndex++}`);
+    conditions.push(`metadata->>'namespace' = $${paramIndex++}`);
     params.push(payload.namespace);
   }
 
-  // Signals filter (JSONB GIN query)
+  // Signals filter (from metadata)
   if (payload.query?.signals && payload.query.signals.length > 0) {
-    conditions.push(`signals @> $${paramIndex++}`);
+    conditions.push(`metadata->'signals' @> $${paramIndex++}`);
     params.push(JSON.stringify(payload.query.signals));
   }
 
-  // Tags filter (JSONB GIN query)
+  // Tags filter (from metadata)
   if (payload.query?.tags && payload.query.tags.length > 0) {
-    conditions.push(`tags @> $${paramIndex++}`);
+    conditions.push(`metadata->'tags' @> $${paramIndex++}`);
     params.push(JSON.stringify(payload.query.tags));
   }
 
-  // Env fingerprint filter
+  // Env fingerprint filter (from metadata)
   if (payload.query?.env_fingerprint) {
-    conditions.push(`env_fingerprint @> $${paramIndex++}`);
+    conditions.push(`metadata->'env_fingerprint' @> $${paramIndex++}`);
     params.push(JSON.stringify(payload.query.env_fingerprint));
   }
 
