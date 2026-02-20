@@ -221,7 +221,7 @@
 ### 9.1 环境配置文档
 - [x] 创建 `MINIO_SETUP.md` - 对象存储配置指南
 - [x] 创建 `.env.example` - 完整配置示例
-- [ ] 创建 `CI_SETUP.md` - CI 配置指南
+- [x] 创建 `CI_SETUP.md` - CI 配置指南
 
 ### 9.2 API 文档更新
 - [x] 更新 `POST /a2a/publish` - gate_id 返回说明
@@ -229,9 +229,9 @@
 - [x] 新增 `POST /gates/{gate_id}/cancel` - 取消 gate 任务
 
 ### 9.3 验证计划文档
-- [ ] 创建 `VALIDATION_PLANS.md` - 验证计划定义指南
-- [ ] 列出预置任务名和对应命令
-- [ ] 说明自定义验证计划方法
+- [x] 创建 `VALIDATION_PLANS.md` - 验证计划定义指南
+- [x] 列出预置任务名和对应命令
+- [x] 说明自定义验证计划方法
 
 ---
 
