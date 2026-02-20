@@ -3,7 +3,9 @@ import { A2AEnvelope, MessageType } from './protocol/envelope.js';
 import { handleHello } from './handlers/hello.js';
 import { handlePublish } from './handlers/publish.js';
 import { handleFetch } from './handlers/fetch.js';
+import { handleGetGate, handleCancelGate } from './handlers/gate.js';
 import { EvoMapError, createAuthError } from './errors/index.js';
+import { startScheduler } from './gate/scheduler.js';
 
 const app = express();
 
@@ -48,6 +50,27 @@ app.post('/a2a/fetch', async (req, res) => {
     
     const response = await handleFetch(envelope);
     res.json(response);
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+// Gate Pipeline Endpoints
+app.get('/gates/:gateId', async (req, res) => {
+  try {
+    const { gateId } = req.params;
+    const gate = await handleGetGate(gateId);
+    res.json(gate);
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+app.post('/gates/:gateId/cancel', async (req, res) => {
+  try {
+    const { gateId } = req.params;
+    const result = await handleCancelGate(gateId);
+    res.json(result);
   } catch (error) {
     handleError(res, error);
   }
@@ -137,13 +160,20 @@ function handleError(res: express.Response, error: unknown): void {
 }
 
 /**
- * Start the server
+ * Start server and scheduler
  */
 const PORT = process.env.PORT || 3000;
+
+// Start gate pipeline scheduler
+startScheduler({
+  max_concurrent_gates: 5,
+  poll_interval_ms: 1000,
+});
 
 app.listen(PORT, () => {
   console.log(`EvoMap-Lite Hub API listening on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/health`);
+  console.log(`Gate pipeline scheduler started`);
 });
 
 export default app;

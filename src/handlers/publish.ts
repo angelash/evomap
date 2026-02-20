@@ -1,7 +1,7 @@
 import { PublishPayload, PublishResponse } from '../protocol/messages.js';
 import { query, queryOne, transaction } from '../database/pool.js';
 import { EvoMapError, createSchemaError, createPolicyError, createAuthError } from '../errors/index.js';
-import crypto from 'crypto';
+import { enqueueGate } from '../gate/scheduler.js';
 
 /**
  * Handle publish message - receive bundle
@@ -63,16 +63,19 @@ export async function handlePublish(
     );
   }
 
-  // Step 4: Create gate pipeline entry
-  const gateId = `gate_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  // Step 4: Enqueue gate pipeline
+  const gateId = await enqueueGate(
+    payload.bundle_hash,
+    sender_id,
+    payload.bundle_bytes_base64,
+    payload.bundle_format,
+    payload.project,
+    payload.namespace,
+    payload.submit_mode
+  );
 
+  // Update node quota and audit log
   await transaction(async (client) => {
-    // Insert gate entry
-    await client.query(
-      'INSERT INTO gates (gate_id, bundle_hash, status, created_at) VALUES ($1, $2, $3, NOW())',
-      [gateId, payload.bundle_hash, 'received']
-    );
-
     // Update node quota
     await client.query(
       'UPDATE nodes SET quota_used = quota_used + 1, last_heartbeat = NOW() WHERE node_id = $1',

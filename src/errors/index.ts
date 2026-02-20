@@ -58,6 +58,7 @@ export const E_RATE_QUOTA_EXCEEDED = 'E_RATE_QUOTA_EXCEEDED';
  */
 export const E_NOTFOUND_ASSET = 'E_NOTFOUND_ASSET';
 export const E_NOTFOUND_NODE = 'E_NOTFOUND_NODE';
+export const E_NOTFOUND_GATE = 'E_NOTFOUND_GATE';
 
 /**
  * 创建鉴权错误
