@@ -1,0 +1,239 @@
+---
+description: 开发流程和工作流
+globs: ["**/*.md", "**/*.mdc", "CONTRIBUT的后"]
+---
+
+## 开发流程
+
+### 任务分配与追踪
+- [ ] 使用 GitHub Issues 追踪任务
+- [ ] 每个任务有明确的验收标准（AC）
+- [ ] 任务类型：feat/fix/docs/refactor/test/chore
+- [ ] 使用标签分类：Phase 0/Phase 1/Phase 2/Phase 3
+
+### 分支策略
+- [ ] 主分支：`main`（稳定版）
+- [ ]` 开发分支：`phase-0/<feature-name>`（如 `phase-0/hub-api`）
+- [ ] 功能分支命名：`<phase>/<type>-<description>`（如 `phase-1/sandbox-runner`）
+- [ ] 每个功能一个分支
+- [ ] 分支生命周期：创建 → 开发 → PR → 合并 → 删除
+
+### Commit 规范
+- [ ] 格式：`<type>(<scope>): <subject>`
+- [ ] type: feat/fix/docs/style/refactor/test/chore
+- [ ] scope: hub/runner/indexer/console/sdk/database/security
+- [ ] subject: 简洁描述（≤ 50 字符）
+- [ ] body: 详细说明（可选）
+- [ ] footer: 关联 Issue（如 `Closes #123`）
+
+### Commit 示例
+```bash
+# 新功能
+git commit -m "feat(hub): add publish endpoint with gate pipeline"
+
+# 修复 bug
+git commit -m "fix(database): resolve race condition in asset insertion"
+
+# 文档
+git commit -m "docs(api): update A2A protocol documentation"
+
+# 重构
+git commit -m "refactor(sdk): simplify bundle creation API"
+
+# 测试
+git commit -m "test(hub): add integration tests for publish flow"
+```
+
+### Code Review 规范
+- [ ] 每个 PR 必须至少 1 个 reviewer
+- [ ] PR 描述标题：`<type>: <subject>`（与 commit 一致）
+- [ ] PR 描述必须包含：
+  - 变更说明
+  - 测试覆盖情况
+  - 关联 Issue
+  - 截图（如适用）
+- [ ] PR 必须通过 CI 检查
+- [ ] 禁止直接合并到 main
+
+### PR 模板
+```markdown
+## 变更说明
+简要描述这个 PR 做了什么。
+
+## 测试覆盖
+- [ ] 单元测试通过
+- [ ] 集成测试通过
+- [ ] E2E 测试通过（如适用）
+- [ ] 手动测试通过（如适用）
+
+## 关联 Issue
+Closes #123
+
+## 检查清单
+- [ ] 代码符合项目规范
+- [ ] 添加了必要的测试
+- [ ] 更新了相关文档
+- [ ] 通过了安全审查（如适用）
+```
+
+### 开发流程（Phase 0）
+1. **任务分配**
+   - 从 GitHub Issues 中选择任务
+   - 确认任务类型和验收标准
+
+2. **创建分支**
+   ```bash
+   git checkout -b phase-0/feat-hub-api
+   ```
+
+3. **开发实现**
+   - 遵循代码规范（01-code-style.mdc）
+   - 遵循协议规范（02-protocol.mdc）
+   - 遵循安全规范（05-security.mdc）
+
+4. **编写测试**
+   - 遵循测试规范（04-testing.mdc）
+   - 确保覆盖率 ≥ 80%
+
+5. **本地验证**
+   ```bash
+   npm run lint
+   npm run typecheck
+   npm run test
+   ```
+
+6. **提交代码**
+   ```bash
+   git add .
+   git commit -m "feat(hub): add publish endpoint"
+   ```
+
+7. **创建 PR**
+   - 推送到远程
+   - 在 GitHub 创建 PR
+   - 填写 PR 模板
+
+8. **Code Review**
+   - 等待 reviewer 审查
+   - 根据反馈修改代码
+
+9. **合并到 main**
+   - PR 通过后合并到 main
+   - 删除功能分支
+
+### 开发流程（Phase 1+）
+与 Phase 0 类似，但分支前缀改为 `phase-1/`、`phase-2/` 等。
+
+### 持续集成（CI）
+- [ ] 每个 PR 必须通过 CI 检查
+- [ ] CI 检查包含：
+  - Lint 检查
+  - 类型检查
+  - 单元测试
+  - 集成测试（如适用）
+- [ ] CI 失败时必须修复才能合并
+
+### 部署流程
+- [ ] 合并到 main 后自动触发部署
+- [ ] 部署到测试环境（自动）
+- [ ] 部署到生产环境（手动触发）
+- [ ] 部署后验证功能
+
+### 版本管理
+- [ ] 使用语义化版本：`v0.1.0`
+- [ ] 主版本号：`v<major>.<minor>.<patch>`
+- [ ] 每次发布更新版本号
+- [ ] 创建 Git tag
+
+### 发布流程
+1. **更新版本号**
+   ```bash
+   # 更新 package.json 中的版本号
+   npm version patch  # 或 minor/major
+   ```
+
+2. **创建 tag**
+   ```bash
+   git tag v0.1.0
+   git push origin v0.1.0
+   ```
+
+3. **构建发布包**
+   ```bash
+   npm run build
+   ```
+
+4. **部署到生产**
+   - 手动触发部署
+   - 验证功能
+   - 监控错误日志
+
+### 紧急修复流程
+- [ ] 从 main 创建 hotfix 分支
+- [ ] 快速修复 bug
+- [ ] 编写回归测试
+- [ ] 合并回 main 和其他开发分支
+- [ ] 立即发布 hotfix 版本
+
+### 代码审查检查清单
+- [ ] 代码符合项目规范
+- [ ] 添加了必要的测试
+- [ ] 更新了相关文档
+- [ ] 通过了安全审查（如适用）
+- [ ] 没有硬编码密钥或敏感信息
+- [ ] 没有 SQL 注入风险
+- [ ] 没有命令注入风险
+- [ ] 性能无明显退化
+
+### 文档更新规范
+- [ ] API 变更必须更新 API 文档
+- [ ] 数据库变更必须更新数据库设计文档
+- [ ] 新功能必须更新 README
+- [ ] 安全变更必须更新安全规范
+
+### 问题排查流程
+1. **复现问题**
+   - 获取错误日志
+   - 确认复现步骤
+
+2. **定位根因**
+   - 使用调试工具
+   - 分析代码逻辑
+   - 检查数据状态
+
+3. **修复问题**
+   - 编写修复代码
+   - 添加回归测试
+   - 验证修复
+
+4. **提交修复**
+   - 遵循 commit 规范
+   - 创建 hotfix PR
+
+5. **验证修复**
+   - 合并到 main
+   - 部署到测试环境
+   - 验证问题已解决
+
+### 技术债务管理
+- [ ] 使用 TODO 注释标记技术债务
+- [ ] 在 Issue 中追踪技术债务
+- [ ] 定期回顾和清理技术债务
+- [ ] 评估技术债务影响和优先级
+
+### 性能优化流程
+1. **性能分析**
+   - 使用性能分析工具
+   - 识别瓶颈
+
+2. **优化实现**
+   - 编写优化代码
+   - 添加性能测试
+
+3. **验证优化**
+   - 对比优化前后性能
+   - 确保没有功能退化
+
+4. **文档化优化**
+   - 记录优化方法和结果
+   - 更新性能文档

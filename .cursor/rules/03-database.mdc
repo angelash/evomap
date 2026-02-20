@@ -1,0 +1,124 @@
+---
+description: 数据库设计与存储规范
+globs: ["**/database/**/*.ts", "**/models/**/*.ts", "**/migrations/**/*.sql"]
+---
+
+## 数据库设计规范
+
+### 表命名规范
+- [ ] 表名：snake_case（如 `assets`、`capsules`、`gates`）
+- [ ] 索引名：`idx_<table>_<column>`（如 `idx_assets_status`）
+- [ ] 外键名：`fk_<table>_<ref_table>`（如 `fk_capsules_assets`）
+- [ ] 约束名：`<table>_<constraint>`（如 `assets_status_check`）
+
+### 字段命名规范
+- [ ] 字段名：snake_case（如 `asset_id`、`created_at`）
+- [ ] 主键：`<table>_id`（如 `asset_id`、`node_id`）
+- [ ] 时间戳：`_at` 后缀（如 `created_at`、`updated_at`）
+- [ ] 布尔值：`is_<name>`（如 `is_active`、`is_deleted`）
+
+### 字段类型规范
+- [ ] 主键：`VARCHAR(64)` 或 `UUID`
+- [ ] 外键：`VARCHAR(64)` 或 `UUID`
+- [ ] 时间戳：`TIMESTAMP WITH TIME ZONE`
+- [ ] JSON 字段：`JSONB`（Postgres）
+- [ ] 枚举：`VARCHAR(32)` + CHECK 约束
+- [ ] 大文本：`TEXT`
+
+### 必需字段
+所有表必须包含：
+- [ ] `created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()`
+- [ ] `updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()`
+- [ ] 乐观锁字段（如 `version INT DEFAULT 0`）
+
+### 索引规范
+- [ ] 主键自动创建索引
+- [ ] 外键自动创建索引
+- [ ] 查询条件字段必须创建索引
+- [ ] 组合索引遵循最左前缀原则
+- [ ] JSONB 字段使用 GIN 索引（如 `CREATE INDEX idx_assets_signals ON assets USING GIN (signals)`）
+
+### 迁移规范
+- [ ] 迁移文件命名：`<timestamp>_<description>.sql`（如 `20250220_001_create_assets_table.sql`）
+- [ ] 迁移必须是幂等的（可重复执行）
+- [ ] 禁止修改已存在的迁移文件
+- [ ] 使用事务包裹迁移
+
+### 迁移模板
+```sql
+-- Migration: 20250220_001_create_assets_table.sql
+-- Description: Create assets table
+
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS assets (
+  asset_id VARCHAR(64) PRIMARY KEY,
+  type VARCHAR(32) NOT NULL,
+  status VARCHAR(32) NOT NULL,
+  project VARCHAR(64) NOT NULL,
+  namespace VARCHAR(64) NOT NULL,
+  summary TEXT NOT NULL,
+  tags JSONB,
+  signals JSONB,
+  env_fingerprint JSONB,
+  created_by_node VARCHAR(64),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  version INT DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_assets_status ON assets(status);
+CREATE INDEX IF NOT EXISTS idx_assets_project ON assets(project);
+CREATE INDEX IF NOT EXISTS idx_assets_type ON assets(type);
+CREATE INDEX IF NOT EXISTS idx_assets_signals ON assets USING GIN (signals);
+
+COMMIT;
+```
+
+### 对象存储规范
+- [ ] 路径结构：`/<type>/<id>.<ext>`（如 `/bundles/sha256:xxx.zip`）
+- [ ] 禁止在路径中使用特殊字符
+- [ ] 使用 SHA-256 作为文件名（防篡改）
+- [ ] 设置合理的生命周期策略（如日志 7 天、报告 90 天）
+
+### 查询规范
+- [ ] 使用参数化查询（禁止字符串拼接）
+- [ ] 使用 prepared statements
+- [ ] 限制返回结果数量（使用 LIMIT）
+- [ ] 避免 SELECT *（只查询需要的字段）
+- [ ] 使用 EXPLAIN 分析慢查询
+
+### 事务规范
+- [ ] 写操作必须在事务中执行
+- [ ] 事务范围尽可能小（减少锁持有时间）
+- [ ] 使用 SAVEPOINT 实现嵌套事务
+- [ ] 正确处理回滚
+
+### 示例
+```typescript
+async function publishAsset(asset: Asset): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // 插入资产
+    await client.query(
+      'INSERT INTO assets (asset_id, type, status, ...) VALUES ($1, $2, $3, ...)',
+      [asset.asset_id, asset.type, asset.status, ...]
+    );
+
+    // 插入 capsule
+    await client.query(
+      'INSERT INTO capsules (capsule_id, gene_id, ...) VALUES ($1, $2, ...)',
+      [capsule.capsule_id, capsule.gene_id, ...]
+    );
+
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+```

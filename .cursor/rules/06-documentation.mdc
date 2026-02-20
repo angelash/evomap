@@ -1,0 +1,112 @@
+---
+description: 文档与图表规范
+globs: ["**/*.md", "**/*.mdc"]
+---
+
+## 文档与图表规范
+
+> 适用范围：**项目所有文档**（`**/*.md`、`**/*.mdc`），以及任何需要"画图表"的说明材料
+
+### 强制规则
+- [ ] **所有图表表达统一使用 Mermaid**（架构图、流程图、状态机、时序图、依赖图等）
+  - 禁止使用 ASCII 画框/箭头图作为图表（可读性差且难以校验）
+  - 禁止混用其它图表 DSL（除非明确约定且提供对应校验器）
+
+### Mermaid 写法规范（GitHub 兼容性优先）
+GitHub Mermaid 渲染器对某些字符非常敏感，常见炸点：
+- ASCII 括号：`()` 出现在节点 label 内（尤其是 `A[...(...)]` / `B[/...(...)/]`）
+- 尖括号`<run_id>` 这类 `<...>`
+- 复杂 label 未加引号
+
+写法要求：
+- [ ] 节点 label 统一用引号包裹：`A["xxx"]`
+- [ ] 避免 ASCII 括号 `()`，优先用中文括号 `（ ）` 或直接移除括号
+- [ ] 避免 `<...>`，优先用 `{run_id}` / `run_id`
+- [ ] 换行统一使用 `<br/>`
+
+### 提交前预检（强烈推荐）
+仓库已提供 Mermaid 预检脚本（可定位到文件与 mermaid block 行号）：
+
+```bash
+# 预检所有文档中的 Mermaid 图表
+node scripts/validate-mermaid.mjs docs/
+```
+
+### 示例
+❌ 不推荐（GitHub 常炸）：
+```mermaid
+flowchart TB
+  A --> B[/intake<br/>(pm-intake.flowspec.json)/]
+```
+
+✅ 推荐（更稳定）：
+```mermaid
+flowchart TB
+  A --> B["/intake<br/>pm-intake.flowspec.json"]
+```
+
+### 架构图规范
+- [ ] 使用 flowchart 或 graph 定义
+- [ ] 节点使用方框 `[""]` 或菱形 `{" "}`
+- [ ] 箭头使用 `-->` 表示数据流
+- [ ] 使用子图分组相关组件
+
+### 流程图规范
+- [ ] 使用 flowchart 定义
+- [ ] 清晰标注决策点（菱形）
+- [ ] 标注并行/串行执行路径
+- [ ] 使用颜色区分不同阶段
+
+### 状态机规范
+- [ ] 使用 stateDiagram-v2 定义
+- [ ] 清晰标注状态转换条件
+- [ ] 标注初始状态和终态
+
+### 时序图规范
+- [ ] 使用 sequenceDiagram 定义
+- [ ] 清晰标注参与者（Agent/Hub/Sandbox/CI）
+- [ ] 标注消息类型和方向
+
+### 时序图示例
+```mermaid
+sequenceDiagram
+  participant Agent as Agent/Evolver
+  participant Hub as Hub API
+  participant Sandbox as Sandbox Runner
+  participant CI as CI System
+
+  Agent->>Hub: publish(bundle)
+  Hub->>Hub: Schema Validate
+  Hub->>Hub: Hash Verify
+  Hub->>Hub: Security Policy Check
+  Hub->>Sandbox: Validate(patch)
+  Sandbox-->>Hub: validation_report
+  Hub->>Hub: Score & Promote Decision
+  Hub-->>Agent: promoted/candidate
+```
+
+### 数据库 ER 图规范
+- [ ] 使用 erDiagram 定义
+- [ ] 清晰标注表名和字段
+- [ ] 标注主外键关系
+
+### ER 图示例
+```mermaid
+erDiagram
+  ASSETS ||--o{ CAPSULES : "asset_id"
+  ASSETS ||--o{ GATES : "asset_id"
+  NODES ||--o{ REPORTS : "node_id"
+  CAPSULES ||--o{ REPORTS : "capsule_id"
+```
+
+### API 文档规范
+- [ ] 使用清晰的请求/响应示例
+- [ ] 标注必填/可选字段
+- [ ] 提供错误码说明
+- [ ] 使用表格列出参数
+
+### 文档结构规范
+- [ ] 使用清晰的章节层级（# ## ###）
+- [ ] 每个章节有明确的主题
+- [ ] 使用表格列出规范/规则
+- [ ] 使用代码块提供示例

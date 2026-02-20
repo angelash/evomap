@@ -1,0 +1,285 @@
+---
+description: 安全规范和红线
+globs: ["**/*.ts", "**/*.tsx", "**/security/**/*.md"]
+---
+
+## 安全规范
+
+### 信任边界
+- [ ] **Hub 不信任任何外部节点的 bundle**
+- [ ] **验证命令必须在 Sandbox/CI 执行**
+- [ ] **candidate 不默认下发到普通消费者**
+- [ ] **所有外部输入必须经过 schema 校验**
+
+### 命令策略（两层防护）
+
+#### 层 A：强白名单（MVP 推荐）
+- [ ] validation_plan 不允许携带任意 shell 命令
+- [ ] 只能选择预置的"任务名"（如 `build_win64`、`run_unit_tests`）
+- [ ] 由 Runner 映射到具体命令（命令在服务端配置）
+
+#### 层 B：有限命令（若允许命令字符串）
+- [ ] 禁止 `; & | > < \` $()` 等危险符号
+- [ ] 禁止 `curl/wget/powershell Invoke-WebRequest` 等外连命令
+- [ ] 禁止写系统目录（`/etc/`、`/sys/`、`/root/`）
+- [ ] 禁止读敏感路径（密钥、token、密码）
+
+### 命令白名单示例
+```typescript
+const ALLOWED_VALIDATION_TASKS = [
+  'build_win64',
+  'build_linux',
+  'run_unit_tests',
+  'run_integration_tests',
+  'lint_ts',
+  'lint_python',
+  'format_check'
+] as const;
+
+function validateValidationPlan(validationPlan: ValidationPlan): void {
+  for (const task of validationPlan.tasks) {
+    if (!ALLOWED_VALIDATION_TASKS.includes(task)) {
+      throw new EvoMapError(
+        'E_POLICY_DANGEROUS_COMMAND',
+        `Disallowed validation task: ${task}`,
+        { task }
+      );
+    }
+  }
+}
+```
+
+### 命令注入防护
+```typescript
+// ❌ 危险：直接执行用户输入
+const result = execSync(userCommand);
+
+// ✅ 安全：使用白名单 + 参数化
+if (ALLOWED_COMMANDS.includes(commandName)) {
+  const result = execSync(`${commandName} ${safeArgs.join(' ')}`);
+}
+```
+
+### 资产生命周期安全
+- [ ] **外部资产永远先进 candidate 区**
+- [ ] **promoted 必须经过验证门禁与审核/策略提升**
+- [ ] **candidate 默认不下发给普通消费者**
+- [ ] **发现污染/`漏洞时立即 revoke 并广播**
+
+### Sandbox 隔离规范
+- [ ] **禁止直接在 Hub 宿主机执行验证命令**
+- [ ] **强制容器/VM 隔离**
+- [ ] **设置资源配额**（CPU/MEM/TIME）
+- [ ] **超时强制 kill**
+- [ ] **网络默认无外网或白名单域名**
+
+### Sandbox 配置示例
+```typescript
+interface SandboxConfig {
+  cpu: string; // '2.0'
+  memory: string; // '4Gi'
+  timeout: number; // 300 (seconds)
+  network: 'none' | 'whitelist';
+  allowedDomains?: string[];
+}
+
+const DEFAULT_SANDBOX_CONFIG: SandboxConfig = {
+  cpu: '2.0',
+  memory: '4Gi',
+  timeout: 300,
+  network: 'none'
+};
+```
+
+### Hash 校验规范
+- [ ] **所有 asset_id 必须使用 canonical JSON 的 SHA-256**
+- [ ] **接收 bundle 时重新计算 hash 并校验**
+- [ ] **hash 不一致直接 reject**
+- [ ] **canonical JSON 规则**：
+  - UTF-8 编码
+  - 字段按字典序排序
+  - 不允许浮点 NaN/Infinity
+  - 数值统一格式
+
+###` Canonical JSON 示例
+```typescript
+import crypto from 'crypto';
+
+function canonicalize(obj: unknown): string {
+  // 1. 排序字段
+  const sorted = sortObjectKeys(obj);
+
+  // 2. 规范化数值
+  const normalized = normalizeNumbers(sorted);
+
+  // 3. JSON 序列化（无空格、无缩进）
+  return JSON.stringify(normalized);
+}
+
+function computeAssetId(obj: unknown): string {
+  const canonical = canonicalize(obj);
+  const hash = crypto.createHash('sha256').update(canonical).digest('hex');
+  return `sha256:${hash}`;
+}
+```
+
+### 审计规范
+- [ ] **publish / decision / revoke / report 全部写入审计日志**
+- [ ] **审计日志 append-only（不可修改）**
+- [ ] **保留期与导出能力**（合规/追责）
+- [ ] **审计日志包含：时间、操作者、操作类型、资产 ID、结果**
+
+### 审计日志示例
+```typescript
+interface AuditLog {
+  id: string;
+  timestamp: Date;
+  actor_id: string;
+  action: 'publish' | 'decision' | 'revoke' | 'report';
+  asset_id?: string;
+  result: 'success' | 'failure';
+  details?: Record<string, unknown>;
+}
+
+async function writeAuditLog(log: AuditLog): Promise<void> {
+  await db.query(
+    'INSERT INTO audit_logs (id, timestamp, actor_id, action, asset_id, result, details) VALUES ($1, $2, $3, $4, $5, $6)',
+    [log.id, log.timestamp, log.actor_id, log.action, log.asset_id, log.result, JSON.stringify(log.details)]
+  );
+}
+```
+
+### 权限控制（RBAC）
+- [ ] **Node 注册需 invite code / 内网 ACL**
+- [ ] **publish：仅 R1（资产贡献者）+ 已注册 Node**
+- [ ] **decision/revoke：仅 R3/R4（审核者/管理员）**
+- [ ] **fetch/report：R2（资产消费者）+ 已注册 Node 或只读开放**
+
+### 权限检查示例
+```typescript
+async function checkPermission(
+  nodeId: string,
+  action: 'publish' | 'decision' | 'revoke' | 'fetch' | 'report'
+): Promise<boolean> {
+  const node = await getNode(nodeId);
+  if (!node || node.status !== 'active') {
+    throw new EvoMapError('E_AUTH_NODE_NOT_REGISTERED', 'Node not registered');
+  }
+
+  const role = node.role;
+  const allowedActions = ROLE_PERMISSIONS[role];
+
+  if (!allowedActions.includes(action)) {
+    throw new EvoMapError(
+      'E_AUTH_PERMISSION_DENIED',
+      `Permission denied: ${role} cannot ${action}`
+    );
+  }
+
+  return true;
+}
+
+const ROLE_PERMISSIONS = {
+  contributor: ['publish', 'fetch', 'report'],
+  consumer: ['fetch', 'report'],
+  reviewer: ['decision', 'revoke', 'fetch'],
+  admin: ['decision', 'revoke', 'fetch', 'publish']
+} as const;
+```
+
+### 密钥与敏感信息
+- [ ] **禁止在代码中硬编码密钥**
+- [ ] **禁止在日志中输出敏感信息**
+- [ ] **禁止在错误消息中暴露内部路径**
+- [ ] **sandbox 内默认拿不到生产密钥**
+- [ ] **依赖下载走内网镜像，禁止随意外连**
+
+### 敏感信息处理示例
+```typescript
+// ❌ 危险：日志中输出密钥
+logger.info(`Connecting with token: ${apiKey}`);
+
+// ✅ 安全：只输出摘要
+logger.info(`Connecting with token: ${apiKey.substring(0, 8)}...`);
+
+// ❌ 危险：错误消息暴露路径
+throw new Error(`Failed to read /home/user/.secrets/key.pem`);
+
+// ✅ 安全：使用通用描述
+throw new Error('Failed to read credentials file');
+```
+
+### SQL 注入防护
+- [ ] **所有数据库查询必须使用参数化**
+- [ ] **禁止字符串拼接 SQL**
+- [ ] **使用 prepared statements**
+
+### SQL 注入防护示例
+```typescript
+// ❌ 危险：字符串拼接
+const query = `SELECT * FROM assets WHERE asset_id = '${userInput}'`;
+
+// ✅ 安全：参数化查询
+const query = 'SELECT * FROM assets WHERE asset_id = $1';
+await db.query(query, [userInput]);
+```
+
+### 配额与反滥用
+- [ ] **publish 限流**（每 node 每小时 N 次）
+- [ ] **candidate 池容量限制**（超出自动降级/拒收）
+- [ ] **同 signals 重复提交提示"可能重复"**
+- [ ]` **blast_radius 超过阈值自动进 quarantine**
+
+### 配额检查示例
+```typescript
+async function checkPublishQuota(nodeId: string): Promise<void> {
+  const oneHourAgo = new Date(Date.now() - 3600000);
+  const count = await db.query(
+    'SELECT COUNT(*) FROM audit_logs WHERE actor_id = $1 AND action = $2 AND timestamp > $3',
+    [nodeId, 'publish', oneHourAgo]
+  );
+
+  if (count >= MAX_PUBLISH_PER_HOUR) {
+    throw new EvoMapError(
+      'E_RATE_LIMIT_EXCEEDED',
+      `Publish rate limit exceeded: ${count}/${MAX_PUBLISH_PER_HOUR} per hour`
+    );
+  }
+}
+```
+
+### 外连控制
+- [ ] **Sandbox 默认无外网**
+- [ ] **依赖下载走内网镜像/代理**
+- [ ] **禁止验证命令访问外网**
+- [ ] **CI/Runner 网络策略可配置白名单**
+
+### 外连检查示例
+```typescript
+function checkExternalConnection(command: string): void {
+  const EXTERNAL_PATTERNS = [
+    /curl\s+https?:\/\//i,
+    /wget\s+https?:\/\//i,
+    /npm\s+install\s+--registry/i,
+    /Invoke-WebRequest/i
+  ];
+
+  for (const pattern of EXTERNAL_PATTERNS) {
+    if (pattern.test(command)) {
+      throw new EvoMapError(
+        'E_POLICY_EXTERNAL_CONNECTION_BLOCKED',
+        'External connection blocked in validation command'
+      );
+    }
+  }
+}
+```
+
+### 安全红线（禁止事项）
+- [ ] **禁止在生产环境直接应用未经审核的 patch**
+- [ ] **禁止在 Hub 宿主机执行验证命令**
+- [ ] **禁止向普通节点下发 candidate 资产**
+- [ ] **禁止允许任意 shell 命令作为 validation_plan**
+- [ ] **禁止跳过 hash 校验**
+- [ ] **禁止跳过权限检查**
+- [ ] **禁止在日志/错误中暴露敏感信息**

@@ -1,0 +1,257 @@
+---
+description: 测试规范和策略
+globs: ["**/tests/**/*.ts", "**/*.test.ts", "**/*.spec.ts"]
+---
+
+## 测试规范
+
+### 测试文件命名
+- [ ] 单元测试：`<module>.test.ts`（如 `hub-api.test.ts`）
+- [ ] 集成测试：`<module>.integration.test.ts`（如 `publish-flow.integration.test.ts`）
+- [ ] E2E 测试：`<scenario>.e2e.test.ts`（如 `publish-fetch-report.e2e.test.ts`）
+
+### 测试框架
+- [ ] 单元测试：Vitest
+- [ ] 集成测试：Vitest
+- [ ] E2E 测试：Playwright
+
+### 测试结构
+```typescript
+describe('Hub API - Publish', () => {
+  describe('happy path', () => {
+    it('should accept valid bundle', async () => {
+      // Given
+      const bundle = createValidBundle();
+
+      // When
+      const response = await publishBundle(bundle);
+
+      // Then
+      expect(response.status).toBe('accepted');
+      expect(response.candidate_asset_ids).toHaveLength(2);
+    });
+  });
+
+  describe('error cases', () => {
+    it('should reject bundle with missing asset_id', async () => {
+      // Given
+      const bundle = createBundle({ asset_id: undefined });
+
+      // When
+      const response = await publishBundle(bundle);
+
+      // Then
+      expect(response.status).toBe('rejected');
+      expect(response.error_code).toBe('E_SCHEMA_MISSING_FIELD');
+    });
+  });
+});
+```
+
+### 测试覆盖要求
+- [ ] 单元测试覆盖率 ≥ 80%
+- [ ] 每个公共函数必须有对应的测试
+- [ ] 每个 API endpoint 必须有集成测试
+- [ ] 错误路径必须有测试（如无效输入、权限不足）
+
+### 测试数据管理
+- [ ] 使用 fixtures（避免硬编码）
+- [ ] fixtures 存放在 `tests/fixtures/` 目录
+- [ ] 使用工厂函数创建测试数据
+- [ ] 每个测试用例使用独立的测试数据
+
+### Fixtures 示例
+```typescript
+// tests/fixtures/assets.ts
+export function createValidGene(overrides?: Partial<Gene>): Gene {
+  return {
+    type: 'Gene',
+    schema_version: '1.0',
+    asset_id: 'sha256:abc123',
+    project: 'test-project',
+    namespace: 'test',
+    category: 'repair',
+    signals_match: ['LNK2019'],
+    validation_plan: { tasks: ['build'] },
+    summary: 'Test gene',
+    tags: ...['test'],
+    ...overrides
+  };
+}
+```
+
+### 集成测试规范
+- [ ] 使用真实数据库（测试专用）
+- [ ] 每个测试前清空数据库或使用事务回滚
+- [ ] 测试完整流程（publish → gate → fetch → report）
+- [ ] 验证数据库状态（不止验证 API 响应）
+
+### 集成测试示例
+```typescript
+describe('Publish Flow Integration', () => {
+  let db: TestDatabase;
+  let hub: HubService;
+
+  beforeEach(async () => {
+    db = await createTestDatabase();
+    hub = new HubService(db);
+  });
+
+  afterEach(async () => {
+    await db.cleanup();
+  });
+
+  it('should complete publish → gate → fetch flow', async () => {
+    // Given
+    const node = await registerNode(db);
+    const bundle = createValidBundle();
+
+    // When
+    const publishResponse = await hub.publish(bundle, node.node_id);
+
+    // Then
+    expect(publishResponse.status).toBe('accepted');
+
+    // Wait for gate completion
+    await waitForGateCompletion(publishResponse.gate_pipeline_id);
+
+    // Fetch promoted assets
+    const fetchResponse = await hub.fetch({
+      project: bundle.project,
+      signals: bundle.gene.signals_match
+    });
+
+    expect(fetchResponse.assets).toHaveLength(1);
+  });
+});
+```
+
+### E2E 测试规范
+- [ ] 测试完整用户场景
+- [ ] 使用真实的 HTTP 客户端
+- [ ] 测试错误恢复（如网络超时、服务重启）
+- [ ] 验证跨系统交互（Hub + Sandbox + CI）
+
+### E2E 测试示例
+```typescript
+describe('Publish E2E', () => {
+  it('should publish bundle and run sandbox validation', async () => {
+    // Given
+    const node = await createTestNode();
+    const bundle = createValidBundle();
+
+    // When
+    const response = await fetch('http://localhost:3000/a2a/publish', {
+      method: 'POST',
+      body: JSON.stringify(createEnvelope(node.node_id, 'publish', bundle))
+    });
+
+    // Then
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.status).toBe('accepted');
+
+    // Verify sandbox execution
+    await expectSandboxToRunValidation(data.gate_pipeline_id);
+  });
+});
+```
+
+### 安全测试规范
+- [ ] 测试恶意 bundle（hash 篡改、危险 validation）
+- [ ] 测试权限边界（未授权访问、越权操作）
+- [ ] 测试注入攻击（SQL 注入、命令注入）
+- [ ] 测试外连阻断（禁止访问外网）
+
+### 安全测试示例
+```typescript
+describe('Security Tests', () => {
+  it('should reject bundle with tampered hash', async () => {
+    // Given
+    const bundle = createValidBundle();
+    bundle.gene.asset_id = 'sha256:tampered';
+
+    // When
+    const response = await publishBundle(bundle);
+
+    // Then
+    expect(response.status).toBe('rejected');
+    expect(response.error_code).toBe('E_HASH_MISMATCH');
+  });
+
+  it('should block dangerous validation commands', async () => {
+    // Given
+    const bundle = createValidBundle();
+    bundle.gene.validation_plan = { tasks: ['rm -rf /'] };
+
+    // When
+    const response = await publishBundle(bundle);
+
+    // Then
+    expect(response.status).toBe('rejected');
+    expect(response.error_code).toBe('E_POLICY_DANGEROUS_COMMAND');
+  });
+});
+```
+
+### 性能测试规范
+- [ ] 测试 API 响应时间（P95 < 300ms）
+- [ ] 测试并发处理（200 节点同时注册）
+- [ ] 测试数据库查询性能（使用 EXPLAIN）
+- [ ] 测试资源限制（内存、CPU）
+
+### Mock 规范
+- [ ] 使用 vi.mock() mock 外部依赖
+- [ ] 每个测试后恢复 mock（vi.restoreAllMocks()）
+- [ ] Mock 必须返回合理的默认值
+- [ ] 避免过度 mock（优先使用真实实现）
+
+### Mock 示例
+```typescript
+import { vi } from 'vitest';
+
+describe('Hub Service', () => {
+  it('should call sandbox runner', async () => {
+    // Given
+    const mockRunner = vi.fn().mockResolvedValue({
+      status: 'pass',
+      steps: []
+    });
+    const hub = new HubService(db, mockRunner);
+
+    // When
+    await hub.publish(bundle, node_id);
+
+    // Then
+    expect(mockRunner).toHaveBeenCalledWith(
+      expect.objectContaining({
+        validation_plan: bundle.gene.validation_plan
+      })
+    );
+  });
+});
+```
+
+### 测试命令
+```bash
+# 运行所有测试
+npm test
+
+# 运行单元测试
+npm run test:unit
+
+# 运行集成测试
+npm run test:integration
+
+# 运行 E2E 测试
+npm run test:e2e
+
+# 运行特定测试文件
+npm test hub-api.test.ts
+
+# 运行特定测试用例
+npm test -- -t "should accept valid bundle"
+
+# 生成覆盖率报告
+npm run test:coverage
+```

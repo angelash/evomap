@@ -1,0 +1,111 @@
+---
+description: TypeScript 代码风格和规范
+globs: ["**/*.ts", "**/*.tsx"]
+---
+
+## TypeScript 代码规范
+
+### 基础规范
+- [ ] 使用 strict mode（tsconfig.json 中 `"strict": true`）
+- [ ] 使用 ES2020+ 语法特性
+- [ ] 禁止使用 `any` 类型（除明确标注的 escape hatch）
+- [ ] 使用 `interface` 定义公共数据结构（避免 type alias 的滥用）
+- [ ] 使用 `type` 定义联合类型、元组类型
+
+### 命名规范
+- [ ] 文件名：kebab-case（如 `hub-api.ts`、`sandbox-runner.ts`）
+- [ ] ] 类名：PascalCase（如 `HubService`、`SandboxRunner`）
+- [ ] 函数名：camelCase（如 `publishAsset`、`fetchAsset`）
+- [ ] 常量名：UPPER_SNAKE_CASE（如 `MAX_BUNDLE_SIZE`）
+- [ ] 私有成员：_camelCase（如 `_dbClient`）
+
+### 导入顺序
+```typescript
+// 1. Node.js 内置模块
+import { readFile } from 'fs';
+
+// 2. 第三方库
+import express from 'express';
+import { Pool } from 'pg';
+
+// 3. 内部模块（相对路径）
+import { Asset } from '../models/asset.js';
+import { validateGene } from '../validators/gene.js';
+```
+
+### 函数规范
+- [ ] 函数长度 ≤ 50 行（超过则拆分）
+- [ ] 参数数量 ≤ 5 个（超过则使用对象参数）
+- [ ] 使用 async/await 而非 Promise.then()
+- [ ] 每个 async 函数必须有错误处理
+- [ ] 公共函数必须有 JSDoc 注释
+
+### JSDoc 注释模板
+```typescript
+/**
+ * 发布资产到 Hub
+ * @param {PublishRequest} request - 发布请求
+ * @param {string} nodeId - 节点 ID
+ * @returns {Promise<PublishResult>} 发布结果
+ * @throws {Error} 当请求无效或验证失败时
+ */
+async function publishAsset(request: PublishRequest, nodeId: string): Promise<PublishResult> {
+  // ...
+}
+```
+
+### 错误处理
+- [ ] 统一错误码格式：`E_CATEGORY_*`（如 `E_AUTH_INVALID_TOKEN`、`E_SCHEMA_MISSING_FIELD`）
+- [ ] 错误消息必须包含上下文信息（asset_id、node_id、message_id）
+- [ ] 敏感信息不得出现在错误消息中（密钥、token、内部路径）
+- [ ] 使用自定义 Error 类（而非 throw string）
+
+### 错误类模板
+```typescript
+export class EvoMapError extends Error {
+  constructor(
+    public code: string,
+    message: string,
+    public context?: Record<string, unknown>
+  ) {
+    super(message);
+    this.name = 'EvoMapError';
+  }
+}
+
+// 使用
+throw new EvoMapError(
+  'E_SCHEMA_MISSING_FIELD',
+  'Missing required field: asset_id',
+  { assetId: gene.asset_id }
+);
+```
+
+### 类型定义
+- [ ] 所有公共 API 使用 interface 定义
+- [ ] 私有类型使用 type 定义
+- [ ] 使用枚举定义固定值集合（如 AssetStatus、MessageType）
+- [ ] 使用 readonly 修饰不可变字段
+
+### 异步处理
+- [ ] 使用 async/await 而非 Promise.then()
+- [ ] 使用 Promise.all() 并行执行独立任务
+- [ ] 使用 Promise.allSettled() 处理可能失败的任务
+- [ ] 避免回调地狱（callback hell）
+
+### 日志规范
+- [ ] 使用结构化日志（JSON 格式）
+- [ ] 日志级别：error/warn/info/debug
+- [ ] 敏感信息不得出现在日志中
+- [ ] 使用 request_id / message_id 追踪请求链路
+
+### 示例
+```typescript
+logger.info({
+  level: 'info',
+  message: 'Publish request received',
+  message_id: request.message_id,
+  sender_id: request.sender_id,
+  asset_ids: request.payload.asset_ids
+});
+```

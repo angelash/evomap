@@ -1,0 +1,247 @@
+---
+description: EvoMap-Lite 项目总览和核心开发规则
+globs: ["**/*.ts", "**/*.tsx", "**/*.yaml", "**/*.json", "**/*.md", "**/*.mdc"]
+alwaysApply: true
+---
+
+## EvoMap-Lite 项目总览
+
+## 项目定位
+**EvoMap-Lite（企业内网自建版）** - 企业内网经验进化与复用 Hub
+
+### 核心目标
+> 把一次成功修复/优化沉淀为可复用资产（可验证 + 可追溯 + 可检索），让其他 Agent 能"继承"而不是"重新推理"。
+
+### 核心概念
+- **Gene**：可复用策略模板（repair/optimize/innovate）
+- **Capsule**：已验证成功的产物（patch + 适用环境 + 置信度）
+- **EvolutionEvent**：进化过程审计记录
+- **Asset ID**：内容寻址 ID，使用 canonical JSON 的 SHA-256
+
+### 部署架构
+- **Hub API**：核心服务（A2A 协议入口）
+- **Sandbox Runner**：隔离验证执行器
+- **Indexer**：检索/索引服务
+- **Console**：Web 管控台（可选）
+- **Evolver SDK**：Agent 侧库/CLI
+
+## 三层安全边界
+
+### L1: 协议层（A2A Envelope）
+- 统一消息封装：protocol、protocol_version、message_type、message_id、sender_id、timestamp、payload
+- 消息类型：hello / publish / fetch / report / decision / revoke
+
+### L2: 资产层（Gene/Capsule/Event）
+- candidate / promoted / rejected / revoked 四态管理
+- 强制 hash 校验（防篡改）
+- 环境指纹（env_fingerprint）必填
+
+### L3: 执行层（Sandbox/CI）
+- 禁止直接在 Hub 宿主机执行验证命令
+- 强制容器/VM 隔离 + 配额 + 超时 kill
+- 验证命令白名单（禁止危险操作）
+
+## 核心角色（RBAC）
+1. **R1 资产贡献者**（研发/Agent）：产出 Gene/Capsule，提交 publish
+2. **R2 资产消费者**（研发/测试/策划/Agent）：search/fetch 复用资产
+3. **R3 审核者**（TL/代码所有者/安全）：对 candidate 做 decision
+4. **R4 平台管理员/运维**：节点管理、黑白名单、配额、审计
+
+## 质量门禁（四阶段）
+1. **Gate-1**：结构完整性 + hash 校验
+2. **Gate-2**：安全审计（验证命令白名单、危险操作符拦截）
+3. **Gate-3**：sandbox 验证（可配置：Hub 自己跑 / 调用 CI / 调用 Sandbox 服务）
+4. **Gate-4**：重复资产检测（同 asset_id 直接去重）
+
+---
+
+## 文档索引
+
+### 设计文档层级
+| 层级 | 路径 | 说明 |
+|------|------|------|
+| 需求层 | `EvoMap-Lite 需求文档（PRD v0.1）.md` | 产品目标、功能需求、验收标准 |
+| 设计层 | `EvoMap-Lite 详细设计文档（SDD v0.1）.md` | 架构设计、数据结构、API 设计 |
+| 实现层 | `docs/implementation/` | 具体实现细节 |
+| 测试层 | `docs/testing/` | 测试策略、测试用例 |
+| 运维层 | `docs/operations/` | 部署、监控、备份 |
+
+### 核心文档
+- 需求文档: `EvoMap-Lite 需求文档（PRD v0.1）.md`
+- 设计文档: `EvoMap-Lite 详细设计文档（SDD v0.1）.md`
+- API 文档: `docs/api/README.md`
+- 数据库设计: `docs/database/README.md`
+- 安全规范: `docs/security/README.md`
+
+---
+
+## 开发规则（代码与测试）
+
+### TypeScript 规范
+- [ ] 使用 strict mode
+- [ ] 所有公共 API 必须有 JSDoc 注释
+- [ ] 使用 interface 定义数据结构（避免 type alias 的滥用）
+- [ ] 禁止 any 类型（除明确标注的 escape hatch）
+- [ ] 使用 async/await 而非 Promise.then()
+
+### 错误处理规范
+- [ ] 统一错误码格式：`E_CATEGORY_*`（如 E_AUTH_*、E_SCHEMA_*）
+- [ ] 错误消息必须包含上下文信息（asset_id、node_id、message_id）
+- [ ] 敏感信息不得出现在错误消息中（密钥、token、内部路径）
+- [ ] 所有 API endpoint 必须有 try-catch 包裹
+
+### 安全编码规范
+- [ ] 禁止直接执行用户提供的 shell 命令
+- [ ] 验证命令必须使用白名单模式
+- [ ] 所有外部输入必须经过 schema 校验
+- [ ] 禁止在日志中输出敏感信息
+- [ ] SQL 查询必须使用参数化（禁止字符串拼接）
+
+### 测试规范
+- [ ] 单元测试覆盖率 ≥ 80%
+- [ ] 每个功能模块必须有对应的测试文件
+- [ ] 集成测试必须覆盖 publish → gate → fetch → report 全链路
+- [ ] 安全测试必须包含：恶意 bundle、hash 篡改、危险 validation、外连阻断
+- [ ] 测试数据使用 fixtures（避免硬编码）
+
+### Git 提交规范
+- [ ] commit message 格式：`<type>(<scope>): <subject>`
+- [ ] type: feat/fix/docs/style/refactor/test/chore
+- [ ] scope: hub/runner/indexer/console/sdk
+- [ ] 示例：`feat(hub): add publish endpoint with gate pipeline`
+
+---
+
+## 文档与图表规范（项目级强制）
+
+> 适用范围：**项目所有文档**（`**/*.md`、`**/*.mdc`），以及任何需要"画图表"的说明材料
+
+### 强制规则
+- [ ] **所有图表表达统一使用 Mermaid**（架构图、流程图、状态机、时序图、依赖图等）
+  - 禁止使用 ASCII 画框/箭头图作为图表（可读性差且难以校验）
+  - 禁止混用其它图表 DSL（除非明确约定且提供对应校验器）
+
+### Mermaid 写法规范（GitHub 兼容性优先）
+GitHub Mermaid 渲染器对某些字符非常敏感，常见炸点：
+- ASCII 括号：`()` 出现在节点 label 内
+- 尖括号：`<run_id>` 这类 `<...>`
+- 复杂 label 未加引号
+
+写法要求：
+- [ ] 节点 label 统一用引号包裹：`A["xxx"]`
+- [ ] 避免 ASCII 括号 `()`，优先用中文括号 `（ ）` 或直接移除括号
+- [ ] 避免 `<...>`，优先用 `{run_id}` / `run_id`
+- [ ] 换行统一使用 `<br/>`
+
+### 示例
+❌ 不推荐（GitHub 常炸）：
+```mermaid
+flowchart TB
+  A --> B[/intake<br/>(pm-intake.flowspec.json)/]
+```
+
+✅ 推荐（更稳定）：
+```mermaid
+flowchart TB
+  A --> B["/intake<br/>pm-intake.flowspec.json"]
+```
+
+---
+
+## 安全红线（必须遵守）
+
+### 禁止事项
+- [ ] **禁止在生产环境直接应用未经审核的 patch**
+- [ ] **禁止在 Hub 宿主机执行验证命令**
+- [ ] **禁止向普通节点下发 candidate 资产**
+- [ ] **禁止允许任意 shell 命令作为 validation_plan**
+- [ ] **禁止跳过 hash 校验**
+
+### 强制事项
+- [ ] **所有验证命令必须在 Sandbox/CI 中执行**
+- [ ] **所有外部资产必须先进 candidate 区**
+- [ ] **所有 publish/decision/revoke/report 必须写入审计日志**
+- [ ] **所有 asset_id 必须使用 canonical JSON 的 SHA-256**
+
+---
+
+## 完成通知（强制）
+
+> ⚠️ 每次任务完成后必须发送完成通知 ⚠️
+
+### 规则
+1. TODO: 列表最后一项必须是 **发送完成通知**
+2. 任务结束前必须检查是否已发送
+3. 即使小改动也要发送
+
+### 通知内容模板
+- 任务名称
+- 完成状态（成功/失败/部分完成）
+- 关键产出（如：新增的 API endpoint、修复的 bug、通过的测试）
+- 下一步建议
+
+---
+
+## 开发任务工作要求
+
+### 核心原则
+1. **长任务管理**：制定定时任务，保证整个任务完整完成
+2. **工作流程**：
+   - 阅读代码和设计文档
+   - 实现功能模块（Hub API / Sandbox Runner / Indexer / Console / SDK）
+   - 编写测试（单元/集成/E2E）
+   - 推进测试
+   - 发现问题 → 走流程开发修复
+   - 直到现有功能全部通过
+
+3. **同步机制**：
+   - 过程中每个步骤需要同步的信息 → 飞书发消息
+   - 这些信息也要记住
+
+4. **定时监督**：开启定时器监督任务进度，确保任务不中断
+
+### 优先级策略
+- ❌ **高级特性**：暂停（任务分发/赏金、gVisor/Firecracker）
+- ✅ **核心闭环**：第一目标，确保"publish → gate → fetch → report"链路通畅
+
+### 工作重心
+- 完全放在 **Core (Hub API + Sandbox) + Data (Postgres + ObjectStore)** 的咬合上
+
+---
+
+## 验收标准（MVP）
+
+### 必须完成（AC-M1 ~ AC-M5）
+- [ ] AC-M1：hello/publish/fetch/report 全链路可跑通
+- [ ] AC-M2：资产 hash 校验 + 去重可用
+- [ ] AC-M3：sandbox 验证可执行并产出报告
+- [ ] AC-M4：candidate/promoted 生命周期可控
+- [ ] AC-M5：验证命令安全审计生效（危险命令必拒绝）
+
+### 可选完成（Beta）
+- [ ] AC-B1：简版排序（成功率/复用量/新鲜度）可用
+- [ ] AC-B2：审核台可视化、审计可追溯
+- [ ] AC-B3：与 CI/Repo 集成稳定（Git 必做，SVN 按需）
+
+---
+
+## 里程碑建议
+
+### Phase 0（1~2 周）
+- [ ] 协议骨架（A2A Envelope）
+- [ ] 存储模型（Postgres 表设计）
+- [ ] 基础 API（hello/publish/fetch/report）
+
+### Phase 1（2~4 周）
+- [ ] Sandbox Runner 实现
+- [ ] 安全审计（验证命令白名单）
+- [ ] candidate/promoted 流程
+
+### Phase 2（4~8 周）
+- [ ] Web Console
+- [ ] CI 集成
+- [ ] 简版排序（GDI）
+
+### Phase 3（8+ 周）
+- [ ] 任务分发/赏金（可选）
+- [ ] 高级安全特性（gVisor/Firecracker）

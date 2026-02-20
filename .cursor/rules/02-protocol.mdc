@@ -1,0 +1,208 @@
+---
+description: A2A 协议规范
+globs: ["**/protocol/**/*.ts", "**/api/**/*.ts"]
+---
+
+## A2A 协议规范
+
+### Envelope 结构（所有请求统一外壳）
+```typescript
+interface A2AEnvelope<T = unknown> {
+  protocol: 'evomap-a2a';
+  protocol_version: '1.0';
+  message_type: MessageType;
+  message_id: string; // UUID v4
+  sender_id: string; // node_xxx
+  timestamp_ms: number; // Unix timestamp in milliseconds
+  payload: T;
+}
+
+type MessageType =
+  | 'hello'
+  | 'publish'
+  | 'fetch'
+  | 'report'
+  | 'decision'
+  | 'revoke';
+```
+
+### 消息类型规范
+
+#### Hello（节点注册/心跳）
+```typescript
+interface HelloPayload {
+  capabilities: string[]; // ['publish', 'fetch', 'report']
+  gene_count?: number;
+  capsule_count?: number;
+  env_fingerprint?: EnvFingerprint;
+}
+
+interface HelloResponse {
+  node_id: string;
+  status: 'registered' | 'updated';
+  claim_code?: string;
+}
+```
+
+#### Publish（发布 bundle）
+```typescript
+interface PublishPayload {
+  bundle_format: 'zip' | 'tar.gz';
+  bundle_bytes_base64: string;
+  bundle_hash: string; // sha256:...
+  project: string;
+  namespace: string;
+  submit_mode: 'candidate_only' | 'auto_promote';
+}
+
+interface PublishResponse {
+  status: 'accepted' | 'rejected';
+  candidate_asset_ids: string[];
+  gate_pipeline_id?: string;
+  next?: {
+    type: 'poll';
+    url: string;
+  };
+}
+```
+
+#### Fetch（拉取资产）
+```typescript
+interface FetchPayload {
+  project: string;
+  namespace: string;
+  query: {
+    signals?: string[];
+    tags?: string[];
+    env_fingerprint?: EnvFingerprint;
+    risk_level_max?: 'low' | 'medium' | 'high';
+  };
+  limit: number;
+  include_candidate: boolean;
+}
+
+interface FetchResponse {
+  assets: CapsuleSummary[];
+  explain?: string;
+}
+
+interface CapsuleSummary {
+  asset_id: string;
+  gene_id: string;
+  summary: string;
+  confidence: number;
+  success_rate: number;
+  env_fingerprint?: EnvFingerprint;
+}
+```
+
+#### Report（上报复用结果）
+```typescript
+interface ReportPayload {
+  target_capsule_id: string;
+  consumer_node_id: string;
+  env_fingerprint: EnvFingerprint;
+  result: 'success' | 'failure';
+  failure_reason?: string;
+  duration_ms: number;
+  notes?: string;
+  artifacts?: {
+    validation_report_hash?: string;
+  };
+}
+
+interface ReportResponse {
+  status: 'recorded';
+}
+```
+
+#### Decision（审核决策）
+```typescript
+interface DecisionPayload {
+  asset_id: string;
+  decision: 'accept' | 'reject' | 'quarantine';
+  reason?: string;
+  reviewer_id: string;
+}
+
+interface DecisionResponse {
+  status: 'applied';
+  asset_status: 'promoted' | 'rejected' | 'quarantined';
+}
+```
+
+#### Revoke（撤销资产）
+```typescript
+interface RevokePayload {
+  asset_id: string;
+  reason: string;
+  revoker_id: string;
+}
+
+interface RevokeResponse {
+  status: 'revoked';
+  broadcast: boolean;
+}
+```
+
+### 环境指纹规范
+```typescript
+interface EnvFingerprint {
+  os: 'win' | 'linux' | 'macos';
+  toolchain?: string; // 'vs2022', 'gcc', 'clang'
+  ue?: string; // '5.6', '5.5'
+  node_version?: string;
+  // ... 其他环境特定字段
+}
+```
+
+### 错误码规范
+```typescript
+// 鉴权错误
+E_AUTH_INVALID_TOKEN = 'E_AUTH_INVALID_TOKEN';
+E_AUTH_NODE_NOT_REGISTERED = 'E_AUTH_NODE_NOT_REGISTERED';
+E_AUTH_PERMISSION_DENIED = 'E_AUTH_PERMISSION_DENIED';
+
+// Schema 错误
+E_SCHEMA_MISSING_FIELD = 'E_SCHEMA_MISSING_FIELD';
+E_SCHEMA_INVALID_TYPE = 'E_SCHEMA_INVALID_TYPE';
+E_SCHEMA_INVALID_VERSION = 'E_SCHEMA_INVALID_VERSION';
+
+// Hash 错误
+E_HASH_MISMATCH = 'E_HASH_MISMATCH';
+E_HASH_INVALID_FORMAT = 'E_HASH_INVALID_FORMAT';
+
+// 策略错误
+' E_POLICY_DANGEROUS_COMMAND = 'E_POLICY_DANGEROUS_COMMAND';
+E_POLICY_BLAST_RADIUS_TOO_LARGE = 'E_POLICY_BLAST_RADIUS_TOO_LARGE';
+E_POLICY_EXTERNAL_CONNECTION_BLOCKED = 'E_POLICY_EXTERNAL_CONNECTION_BLOCKED';
+
+// 门禁错误
+E_GATE_VALIDATION_FAILED = 'E_GATE_VALIDATION_FAILED';
+E_GATE_SANDBOX_TIMEOUT = 'E_GATE_SANDBOX_TIMEOUT';
+E_GATE_CI_JOB_FAILED = 'E_GATE_CI_JOB_FAILED';
+
+// 限流错误
+E_RATE_LIMIT_EXCEEDED = 'E_RATE_LIMIT_EXCEEDED';
+E_RATE_QUOTA_EXCEEDED = 'E_RATE_QUOTA_EXCEEDED';
+
+// 未找到错误
+E_NOTFOUND_ASSET = 'E_NOTFOUND_ASSET';
+E_NOTFOUND_NODE = 'E_NOTFOUND_NODE';
+```
+
+### API Endpoint 规范
+```
+POST /a2a/hello
+POST /a2a/publish
+POST /a2a/fetch
+POST /a2a/report
+POST /a2a/decision
+POST /a2a/revoke
+
+GET /assets/{asset_id}
+GET /assets/search?q=...
+GET /assets/ranked?...
+GET /nodes
+GET /stats
+```
