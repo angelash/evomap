@@ -1,5 +1,5 @@
 import { FetchPayload, FetchResponse } from '../protocol/messages.js';
-import { query } from '../database/pool.js';
+import { query, queryOne } from '../database/pool.js';
 import { EvoMapError, createAuthError, E_AUTH_PERMISSION_DENIED } from '../errors/index.js';
 
 /**
@@ -69,18 +69,18 @@ export async function handleFetch(
   const limitClause = `LIMIT ${Math.min(payload.limit, 100)}`;
 
   const queryText = `
-    SELECT 
-      a.asset as asset_id,
-      a.gene_id,
-      a.summary,
+    SELECT
+      a.asset_id,
+      c.gene_id,
+      a.name as summary,
       c.confidence,
-      COALESCE(SUM(CASE WHEN r.result = 'success' THEN 1 ELSE 0 END), 0) / NULLIF(COUNT(r.id), 0, 1) as success_rate,
-      a.env_fingerprint
+      COALESCE(SUM(CASE WHEN r.result = 'success' THEN 1 ELSE 0 END), 0) / NULLIF(COUNT(r.id), 0) as success_rate,
+      a.metadata->>'env_fingerprint' as env_fingerprint
     FROM assets a
     LEFT JOIN capsules c ON a.asset_id = c.capsule_id
     LEFT JOIN reports r ON a.asset_id = r.capsule_id
-    WHERE a.type = 'Capsule' AND ${whereClause}
-    GROUP BY a.asset_id, a.gene_id, a.summary, c.confidence, a.env_fingerprint
+    WHERE ${whereClause}
+    GROUP BY a.asset_id, c.gene_id, a.name, c.confidence, a.metadata, a.created_at
     ORDER BY c.confidence DESC, a.created_at DESC
     ${limitClause}
   `;

@@ -23,7 +23,7 @@ export async function handleHello(
   if (existingNode) {
     await transaction(async (client) => {
       await client.query(
-        'UPDATE nodes SET capabilities = $1, gene_count = $2, capsule_count = $3, env_fingerprint = $4, last_heartbeat = NOW() WHERE node_id = $5',
+        'UPDATE nodes SET capabilities = $1, gene_count = $2, capsule_count = $3, env_fingerprint = $4, last_heartbeat = NOW(), updated_at = NOW() WHERE node_id = $5',
         [
           JSON.stringify(payload.capabilities),
           payload.gene_count || 0,
@@ -42,9 +42,11 @@ export async function handleHello(
   } else {
     await transaction(async (client) => {
       await client.query(
-        'INSERT INTO nodes (node_id, capabilities, gene_count, capsule_count, env_fingerprint, status, last_heartbeat) VALUES ($1, $2, $3, $4, $5, NOW())',
+        'INSERT INTO nodes (node_id, public_key, role, capabilities, gene_count, capsule_count, env_fingerprint, status, last_heartbeat) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())',
         [
           sender_id,
+          '', // public_key - 待后续认证流程更新
+          'contributor', // role - 默认为 contributor
           JSON.stringify(payload.capabilities),
           payload.gene_count || 0,
           payload.capsule_count || 0,

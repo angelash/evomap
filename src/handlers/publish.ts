@@ -1,5 +1,5 @@
 import { PublishPayload, PublishResponse } from '../protocol/messages.js';
-import { query, transaction } from '../database/pool.js';
+import { query, queryOne, transaction } from '../database/pool.js';
 import { EvoMapError, createSchemaError, createPolicyError } from '../errors/index.js';
 import crypto from 'crypto';
 

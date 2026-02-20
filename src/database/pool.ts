@@ -18,9 +18,9 @@ export interface DatabaseConfig {
 const DEFAULT_CONFIG: DatabaseConfig = {
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '5432', 10),
-  database: process.env.DB_NAME || 'evommap_lite',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'evomap_lite',
+  user: process.env.DB_USER || 'evomap',
+  password: process.env.DB_PASSWORD || 'evomap_dev_secret',
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000
