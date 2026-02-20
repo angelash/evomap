@@ -88,7 +88,7 @@
 ## 下一步
 Phase 0 已完成！准备进入 Phase 1（Sandbox Runner + Gate Pipeline）
 
-### Phase 1 规划（待确认）
-需要确认 Sandbox Runner（验证环境）方案：
-1. **Docker Sandbox**: 为每个任务启动隔离容器执行验证逻辑
-2. **CI 模式**: 复用现有 CI 流水线环境
+### Phase 1 规划（已确认：CI 模式）
+✅ Sandbox Runner 方案：**CI 模式**（复用现有 CI 流水线）
+
+详细任务清单见：`PLAN_PHASE1.md`
