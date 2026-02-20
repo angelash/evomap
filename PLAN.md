@@ -50,6 +50,15 @@
 - [x] 验证所有 endpoints
 - [ ] 压力测试（可选）
 
+### Step 8: 代码审查修复（✅ 完成）
+- [x] 修复 publish.ts bundle_format 判断 bug
+- [x] 修复 public_key NOT NULL 约束问题
+- [x] 修复 fetch.ts 字段名不一致问题
+- [x] 清理 node_modules 提交问题
+- [x] 修复 POSTGRES_SETUP.md 拼写错误
+- [x] 修复测试用例 Mock 问题
+- [x] 所有 21 个测试通过
+
 ## 当前进度
 - ✅ Step 1 完成（项目初始化）
 - ✅ Step 2 完成（协议骨架实现）
@@ -58,6 +67,28 @@
 - ✅ Step 5 完成（验收测试）
 - ✅ Step 6 完成（数据库配置）
 - ✅ Step 7 完成（正式部署）
+- ✅ Step 8 完成（代码审查修复）
+
+## Phase 0 总结
+
+### 已完成功能
+- A2A Envelope 协议定义
+- 6 种消息类型实现（hello/publish/fetch/report/decision/revoke）
+- Postgres 存储模型（6 张表）
+- Express API 服务器
+- 完整的单元测试和集成测试（21 个测试全部通过）
+- 生产环境部署完成
+
+### 代码质量
+- 所有测试通过（14 单元测试 + 7 集成测试）
+- 代码审查问题全部修复
+- .gitignore 配置完成
+- 文档完善（POSTGRES_SETUP.md）
 
 ## 下一步
 Phase 0 已完成！准备进入 Phase 1（Sandbox Runner + Gate Pipeline）
+
+### Phase 1 规划（待确认）
+需要确认 Sandbox Runner（验证环境）方案：
+1. **Docker Sandbox**: 为每个任务启动隔离容器执行验证逻辑
+2. **CI 模式**: 复用现有 CI 流水线环境
