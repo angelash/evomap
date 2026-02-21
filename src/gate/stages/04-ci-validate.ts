@@ -5,6 +5,11 @@
 
 import { createGateError } from '../../errors/index.js';
 import type { GateContext, ValidationResult } from '../types.js';
+import { MockCIAdapter } from '../../ci/mock.js';
+import { CIAdapter } from '../../ci/adapter.js';
+
+// 这里目前写死使用 MockCIAdapter，后续从全局配置注入
+const ciAdapter: CIAdapter = new MockCIAdapter();
 
 export async function executeStageCIValidate(
   context: GateContext,
@@ -16,31 +21,69 @@ export async function executeStageCIValidate(
 
   console.log(`[Stage 4] Starting CI validation for gate=${context.gate_id}`);
 
-  // TODO: 调用 CI Adapter 触发任务
-  // 1. 准备 CI 变量 (repo_ref, patch_key, validation_plan)
-  // 2. 触发 CI Pipeline
-  // 3. 轮询状态或等待回调
-  // 4. 获取并解析 validation_report.json
-
-  // 模拟异步过程
-  await new Promise(resolve => setTimeout(resolve, 1000));
-
-  // 暂时返回 Mock 结果
-  const result: ValidationResult = {
-    status: 'pass',
-    steps: [
-      { name: 'checkout', status: 'pass', duration_ms: 5000 },
-      { name: 'apply_patch', status: 'pass', duration_ms: 1200 },
-      { name: 'build_win64', status: 'pass', duration_ms: 180000 },
-      { name: 'run_unit_tests', status: 'pass', duration_ms: 45000 }
-    ],
-    env_fingerprint: {
-      os: 'linux',
-      docker_image: 'evomap-runner-win64:v1',
-      cpu_cores: 4
-    }
+  // 1. 准备 CI 变量
+  const input = {
+    gate_id: context.gate_id,
+    repo_ref: (context.parsed_bundle?.gene?.metadata?.repo_ref as string) || 'main',
+    patch_key: context.parsed_bundle?.capsule?.patch_object_key || `patches/${context.gate_id}/patch.zip`,
+    validation_plan: context.parsed_bundle?.gene?.validation_plan || { tasks: [] }
   };
 
-  console.log(`[Stage 4] CI validation completed for gate=${context.gate_id}, result=${result.status}`);
-  return result;
+  try {
+    // 2. 触发 CI Pipeline
+    const externalId = await ciAdapter.triggerTask(input);
+    console.log(`[Stage 4] CI task triggered: externalId=${externalId}`);
+
+    // 3. 轮询状态
+    let pollCount = 0;
+    const maxPolls = 60; // 60 * 5s = 5 minutes
+    
+    while (pollCount < maxPolls) {
+      if (signal.aborted) {
+        await ciAdapter.cancelTask(externalId);
+        throw createGateError('E_GATE_CANCELLED', 'Gate cancelled during CI polling');
+      }
+
+      const output = await ciAdapter.checkStatus(externalId);
+      console.log(`[Stage 4] Polling CI status: externalId=${externalId}, status=${output.status}`);
+
+      if (output.status === 'pass') {
+        // TODO: 获取并解析 validation_report.json
+        // 目前返回 Mock 结果
+        return {
+          status: 'pass',
+          steps: [
+            { name: 'ci_execution', status: 'pass' }
+          ],
+          env_fingerprint: {
+            external_id: externalId,
+            log_url: output.log_url
+          }
+        };
+      } else if (output.status === 'fail' || output.status === 'error') {
+        return {
+          status: 'fail',
+          steps: [
+            { name: 'ci_execution', status: 'fail', error: output.error_message }
+          ],
+          env_fingerprint: {
+            external_id: externalId,
+            log_url: output.log_url
+          }
+        };
+      }
+
+      // 等待 5 秒
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      pollCount++;
+    }
+
+    throw createGateError('E_CI_TIMEOUT', `CI validation timeout for externalId=${externalId}`);
+
+  } catch (error: any) {
+    if (error.code === 'E_GATE_CANCELLED' || error.code === 'E_CI_TIMEOUT') {
+      throw error;
+    }
+    throw createGateError('E_CI_TRIGGER_FAILED', `Failed to trigger/poll CI: ${error.message}`);
+  }
 }
