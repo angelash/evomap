@@ -74,7 +74,11 @@ export async function handleFetch(
       c.gene_id,
       a.name as summary,
       c.confidence,
-      COALESCE(SUM(CASE WHEN r.result = 'success' THEN 1 ELSE 0 END), 0) / NULLIF(COUNT(r.id), 0) as success_rate,
+      COALESCE(
+        SUM(CASE WHEN r.result = 'success' THEN 1 ELSE 0 END)::float / 
+        NULLIF(COUNT(r.id), 0),
+        0
+      ) as success_rate,
       a.metadata->>'env_fingerprint' as env_fingerprint
     FROM assets a
     LEFT JOIN capsules c ON a.asset_id = c.capsule_id

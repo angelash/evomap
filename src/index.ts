@@ -100,9 +100,17 @@ async function validateEnvelope(
 
   if (env.protocol !== 'evomap-a2a') {
     throw new EvoMapError(
+      'E_SCHEMA_INVALID_TYPE',
+      'Invalid protocol type',
+      { protocol: env.protocol }
+    );
+  }
+
+  if (env.protocol_version !== '1.0') {
+    throw new EvoMapError(
       'E_SCHEMA_INVALID_VERSION',
       'Invalid protocol version',
-      { protocol: env.protocol }
+      { protocol_version: env.protocol_version }
     );
   }
 
