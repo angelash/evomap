@@ -5,7 +5,7 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS nodes (
   node_id VARCHAR(64) PRIMARY KEY,
-  public_key TEXT NOT NULL,
+  public_key TEXT, -- MVP: allow NULL, will be enforced later with auth
   role VARCHAR(32) NOT NULL,
   capabilities JSONB NOT NULL,
   gene_count INTEGER DEFAULT 0,
@@ -26,6 +26,7 @@ CREATE INDEX IF NOT EXISTS idx_nodes_last_heartbeat ON nodes(last_heartbeat);
 
 COMMENT ON TABLE nodes IS 'Node registry for A2A protocol';
 COMMENT ON COLUMN nodes.node_id IS 'Unique node identifier';
+COMMENT ON COLUMN nodes.public_key IS 'Public key for node authentication (MVP: optional)';
 COMMENT ON COLUMN nodes.role IS 'Role: contributor/consumer/reviewer/admin';
 COMMENT ON COLUMN nodes.status IS 'Status: active/inactive/banned';
 

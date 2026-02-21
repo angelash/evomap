@@ -32,5 +32,5 @@ export interface EnvFingerprint {
   toolchain?: string; // 'vs2022', 'gcc', 'clang'
   ue?: string; // '5.6', '5.5'
   node_version?: string;
-  // ... 其他环境特定字段
+  [k: string]: unknown; // 其他环境特定字段
 }

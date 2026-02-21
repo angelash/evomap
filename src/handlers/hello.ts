@@ -42,10 +42,9 @@ export async function handleHello(
   } else {
     await transaction(async (client) => {
       await client.query(
-        'INSERT INTO nodes (node_id, public_key, role, capabilities, gene_count, capsule_count, env_fingerprint, status, last_heartbeat) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())',
+        'INSERT INTO nodes (node_id, role, capabilities, gene_count, capsule_count, env_fingerprint, status, last_heartbeat) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())',
         [
           sender_id,
-          '', // public_key - 待后续认证流程更新
           'contributor', // role - 默认为 contributor
           JSON.stringify(payload.capabilities),
           payload.gene_count || 0,
