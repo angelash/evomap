@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
-import { Table, Tag, Space, Input, Switch, Card, Typography, Spin, Alert } from 'antd';
+import { Table, Tag, Space, Input, Switch, Card, Typography, Alert } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useAssetStore } from '../store/assets';
-import { CapsuleSummary } from '../api/client';
+import type { CapsuleSummary } from '../api/client';
 
 const { Title } = Typography;
 const { Search } = Input;
@@ -58,7 +58,7 @@ const AssetBrowser: React.FC = () => {
     {
       title: 'Actions',
       key: 'action',
-      render: (_, record) => (
+      render: () => (
         <Space size="middle">
           <a>Details</a>
         </Space>

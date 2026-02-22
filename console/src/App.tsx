@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layout, Menu, Typography, Button, theme } from 'antd';
+import { Layout, Menu, Button, theme } from 'antd';
 import { 
   BrowserRouter as Router, 
   Routes, 
@@ -21,7 +21,6 @@ import ReviewBoard from './pages/ReviewBoard';
 import NodePanel from './pages/NodePanel';
 
 const { Header, Content, Sider } = Layout;
-const { Title } = Typography;
 
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [collapsed, setCollapsed] = useState(false);

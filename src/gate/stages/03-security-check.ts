@@ -79,7 +79,7 @@ export async function executeStageSecurityCheck(
   // 1. 验证计划白名单检查
   const validationPlan = gene.validation_plan;
   for (const task of validationPlan.tasks) {
-    if (!ALLOWED与其他_VALIDATION_TASKS.has(task.name)) {
+    if (!ALLOWED_VALIDATION_TASKS.has(task.name)) {
       report.validation_plan_safe = false;
       report.dangerous_commands.push(task.name);
       report.notes.push(`Validation task "${task.name}" not in whitelist`);

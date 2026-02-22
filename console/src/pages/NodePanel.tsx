@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
 import { Table, Tag, Typography, Alert, Card, Statistic, Row, Col } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { useNodeStore, NodeInfo } from '../store/nodes';
+import { useNodeStore } from '../store/nodes';
+import type { NodeInfo } from '../store/nodes';
 import { Activity, Server, Cpu } from 'lucide-react';
 
 const { Title } = Typography;

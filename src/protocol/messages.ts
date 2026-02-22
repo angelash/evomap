@@ -1,3 +1,5 @@
+import type { EnvFingerprint } from './envelope.js';
+
 /**
  * Hello 消息 - 节点注册/心跳
  */

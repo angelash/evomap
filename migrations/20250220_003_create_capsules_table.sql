@@ -4,8 +4,8 @@
 BEGIN;
 
 CREATE TABLE IF NOT EXISTS capsules (
-  capsule_id VARCHAR(64) PRIMARY KEY REFERENCES assets(asset_id) ON DELETE CASCADE,
-  gene_id VARCHAR(64) NOT NULL REFERENCES assets(asset_id),
+  capsule_id VARCHAR(255) PRIMARY KEY REFERENCES assets(asset_id) ON DELETE CASCADE,
+  gene_id VARCHAR(255) NOT NULL REFERENCES assets(asset_id),
   confidence NUMERIC(5,2) NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
   blast_radius_files INTEGER DEFAULT 0,
   blast_radius_lines INTEGER DEFAULT 0,

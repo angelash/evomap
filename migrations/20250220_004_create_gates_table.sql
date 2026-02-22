@@ -4,10 +4,10 @@
 BEGIN;
 
 CREATE TABLE IF NOT EXISTS gates (
-  gate_id VARCHAR(64) PRIMARY KEY,
+  gate_id VARCHAR(255) PRIMARY KEY,
   bundle_hash VARCHAR(128) NOT NULL,
   status VARCHAR(32) NOT NULL DEFAULT 'received',
-  error_code VARCHAR(64),
+  error_code VARCHAR(255),
   report_key VARCHAR(255),
   duration_ms INTEGER,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

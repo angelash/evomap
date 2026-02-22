@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Table, Button, Space, Typography, Modal, Input, message, Alert } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useReviewStore } from '../store/review';
-import { CapsuleSummary } from '../api/client';
+import type { CapsuleSummary } from '../api/client';
 
 const { Title } = Typography;
 

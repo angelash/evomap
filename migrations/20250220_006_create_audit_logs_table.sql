@@ -5,10 +5,10 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS audit_logs (
   id BIGSERIAL PRIMARY KEY,
-  message_id VARCHAR(64),
-  sender_id VARCHAR(64),
+  message_id VARCHAR(255),
+  sender_id VARCHAR(255),
   action VARCHAR(32) NOT NULL,
-  asset_id VARCHAR(64),
+  asset_id VARCHAR(255),
   result VARCHAR(16) NOT NULL,
   details JSONB,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

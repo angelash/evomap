@@ -4,7 +4,7 @@
 BEGIN;
 
 CREATE TABLE IF NOT EXISTS nodes (
-  node_id VARCHAR(64) PRIMARY KEY,
+  node_id VARCHAR(255) PRIMARY KEY,
   public_key TEXT, -- MVP: allow NULL, will be enforced later with auth
   role VARCHAR(32) NOT NULL,
   capabilities JSONB NOT NULL,

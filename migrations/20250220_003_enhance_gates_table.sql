@@ -11,7 +11,7 @@ BEGIN
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gates' AND column_name='error_code') THEN
-        ALTER TABLE gates ADD COLUMN error_code VARCHAR(64);
+        ALTER TABLE gates ADD COLUMN error_code VARCHAR(255);
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gates' AND column_name='error_message') THEN

@@ -5,8 +5,8 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS reports (
   id BIGSERIAL PRIMARY KEY,
-  capsule_id VARCHAR(64) NOT NULL REFERENCES assets(asset_id),
-  node_id VARCHAR(64) NOT NULL REFERENCES nodes(node_id),
+  capsule_id VARCHAR(255) NOT NULL REFERENCES assets(asset_id),
+  node_id VARCHAR(255) NOT NULL REFERENCES nodes(node_id),
   result VARCHAR(16) NOT NULL,
   env_fingerprint JSONB,
   duration_ms INTEGER,

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { api, CapsuleSummary } from '../api/client';
+import { api } from '../api/client';
+import type { CapsuleSummary } from '../api/client';
 
 interface ReviewStore {
   pendingAssets: CapsuleSummary[];
